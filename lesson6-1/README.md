@@ -134,12 +134,48 @@ sudo systemctl enable mosquitto
 }
 ```
 
-支援的欄位名稱：
-- 溫度：`temperature` 或 `temp`
-- 濕度：`humidity` 或 `humi`
-- 電燈：`light_status` 或 `light`
+#### 📋 欄位規格
+
+| 欄位名稱 | 別名 | 類型 | 單位 | 範例值 | 必填 |
+|---------|------|------|------|--------|------|
+| `temperature` | `temp` | `float` | °C | `25.5` | ✅ |
+| `humidity` | `humi` | `float` | % | `60.0` | ✅ |
+| `light_status` | `light` | `string` | - | `"開"` 或 `"關"` | ✅ |
+
+#### ⚙️ MQTT 配置
+
+- **Broker 地址**: `localhost` (本地) 或您的 Raspberry Pi IP
+- **Port**: `1883`
+- **Topic**: `客廳/感測器`
+- **QoS**: `1` (建議)
+- **編碼**: UTF-8
 
 ## 🔌 使用 Raspberry Pi Pico W 發送數據
+
+### 📡 Pico 發送格式要求
+
+在使用 Raspberry Pi Pico W 發送數據前，請確保訊息符合以下格式：
+
+**必要配置：**
+- **MQTT Topic**: `客廳/感測器`
+- **訊息格式**: JSON 字串
+- **編碼**: UTF-8
+
+**訊息結構：**
+```python
+import ujson  # 或 json
+
+# Pico 要發送的數據格式
+data = {
+    "temperature": 25.5,    # 溫度 (°C) - 必填，float 類型
+    "humidity": 60.0,       # 濕度 (%) - 必填，float 類型
+    "light_status": "開"    # 電燈狀態 - 必填，"開" 或 "關"
+}
+
+# 轉換為 JSON 字串後發送
+json_string = ujson.dumps(data)
+client.publish("客廳/感測器", json_string)
+```
 
 ### MicroPython 範例代碼
 
@@ -283,14 +319,36 @@ mpremote mip install umqtt.simple
 2. 搜尋 `umqtt.simple`
 3. 安裝
 
+### 🎯 快速參考 - Pico 發送格式
+
+如果您的 Pico 已連接好並想快速開始，記住這個簡單的格式：
+
+```python
+# 最簡單的發送範例
+from umqtt.simple import MQTTClient
+import ujson
+
+client = MQTTClient("pico", "你的Pi的IP", 1883)
+client.connect()
+
+# 這是 Flask 應用程式期望接收的格式
+data = {
+    "temperature": 25.5,     # 必填
+    "humidity": 60.0,        # 必填
+    "light_status": "開"     # 必填："開" 或 "關"
+}
+
+client.publish("客廳/感測器", ujson.dumps(data))
+```
+
 ### 使用步驟
 
 1. **修改代碼設定**：
    - WiFi SSID 和密碼
-   - MQTT_BROKER 改為你的 Raspberry Pi IP 地址
+   - MQTT_BROKER 改為你的 Raspberry Pi IP 地址（使用 `hostname -I` 查詢）
 
 2. **上傳到 Pico W**：
-   - 使用 Thonny IDE 或其他工具
+   - 使用 Thonny IDE 或 mpremote 工具
 
 3. **執行程式**：
    - Pico 會每 5 秒自動發送一次數據
@@ -298,7 +356,7 @@ mpremote mip install umqtt.simple
 
 4. **查看結果**：
    - 打開 http://localhost:8080 或 http://<您的Pi IP>:8080
-   - 即可看到 Pico 發送的數據
+   - 即可看到 Pico 發送的數據即時顯示在儀表板上
 
 ## 📈 效能比較
 
